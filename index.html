@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MT Post-Editing Training Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+Arabic:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .arabic-text { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; }
+        .diff-added { background-color: #dcfce7; text-decoration: none; color: #166534; }
+        .diff-removed { background-color: #fee2e2; text-decoration: line-through; color: #991b1b; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-20">
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="min-h-screen flex items-center justify-center p-6">
+        <div class="max-w-2xl w-full bg-white p-10 rounded-3xl shadow-xl border border-slate-200 text-center">
+            
+            <!-- Replace 'your-logo.png' with the path or URL to your actual logo -->
+            <img src="TDC (4).png" alt="Workshop Logo" class="h-24 w-24 rounded-full mx-auto mb-6 object-cover shadow-sm border border-slate-100">
+            
+            <h1 class="text-4xl font-bold text-slate-800 mb-4">MT Post-Editing Trainer</h1>
+            <p class="text-lg text-slate-600 mb-2">Based on Sharon O’Brien:</p>
+            <p class="text-xl font-bold text-indigo-600 mb-8">"How to deal with errors in MT"</p>
+            
+            <button onclick="startWorkshop()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 text-lg w-full sm:w-auto">
+                Start Workshop
+            </button>
+        </div>
+    </div>
+
+    <!-- Workshop Interface -->
+    <div id="workshop-interface" class="hidden">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white py-8 px-6 shadow-lg mb-8">
+        <div class="max-w-5xl mx-auto">
+            <h1 class="text-3xl font-bold">MT Post-Editing Trainer</h1>
+            <p class="mt-2 text-indigo-100 opacity-90">Based on Sharon O’Brien: "How to deal with errors in MT"</p>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left: Instructions & Theory -->
+        <div class="lg:col-span-1 space-y-6">
+            <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-semibold mb-4 text-slate-800">Learning Objectives</h2>
+                <ul class="space-y-3 text-slate-600 text-sm">
+                    <li class="flex gap-2">
+                        <span class="text-indigo-600 font-bold">1.</span>
+                        Distinguish between Light and Full PE (Arabic → English).
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-indigo-600 font-bold">2.</span>
+                        Identify MT Error Categories (Accuracy vs. Fluency).
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-indigo-600 font-bold">3.</span>
+                        Measure Technical Effort (Edit Distance).
+                    </li>
+                </ul>
+            </section>
+
+            <section id="pe-guidelines" class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                <h2 class="text-lg font-semibold mb-3 text-indigo-900">Current Task: Light PE</h2>
+                <p class="text-sm text-indigo-800 mb-4 italic">"Aim for 'good enough'. Fix only errors that distort the meaning. Don't worry about style or flow."</p>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2 text-xs text-indigo-700">
+                        <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                        Accuracy is Priority #1
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-indigo-700">
+                        <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                        Minimize keystrokes
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right: The Editor -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+                <!-- Toolbar -->
+                <div class="bg-slate-100 border-bottom border-slate-200 p-4 flex justify-between items-center">
+                    <div class="flex gap-2">
+                        <span id="timer" class="bg-slate-800 text-white px-3 py-1 rounded-md text-xs font-mono">00:00</span>
+                        <span class="bg-white border border-slate-300 px-3 py-1 rounded-md text-xs text-slate-600">Keystrokes: <span id="k-count">0</span></span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="switchMode('light')" id="btn-light" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all">Light PE</button>
+                        <button onclick="switchMode('full')" id="btn-full" class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 transition-all">Full PE</button>
+                    </div>
+                </div>
+
+                <!-- Editor Workspace -->
+                <div class="p-8">
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Source Text (Arabic)</label>
+                        <div id="source-text" class="arabic-text p-4 bg-slate-50 rounded-lg text-slate-800 text-xl leading-relaxed border-r-4 border-indigo-500 italic">
+                            لقد فشل البرنامج في التحديث بسبب عدم توفر الخادم. يرجى المحاولة مرة أخرى لاحقاً أو الاتصال بالدعم إذا استمرت المشكلة.
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Machine Output (Target: English)</label>
+                        <textarea id="editor" 
+                            class="w-full p-6 text-lg bg-white border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-0 transition-all leading-relaxed" 
+                            rows="4"
+                            spellcheck="false">The program failed in updating because of not availability of the server. Please try again later or contact support if the problem stays.</textarea>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <button onclick="resetEditor()" class="text-sm text-slate-500 hover:text-slate-800 underline decoration-slate-300">Revert to Raw MT</button>
+                        </div>
+                        <button onclick="submitPE()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95">Finish Editing</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div class="bg-green-50 border border-green-200 rounded-2xl p-8">
+                    <h3 class="text-xl font-bold text-green-800 mb-4">Post-Editing Metrics</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white p-4 rounded-xl border border-green-100 text-center">
+                            <span class="block text-xs text-slate-500 uppercase">Time Spent</span>
+                            <span id="final-time" class="text-2xl font-bold text-green-700">0s</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-green-100 text-center">
+                            <span class="block text-xs text-slate-500 uppercase">Edit Distance</span>
+                            <span id="final-ed" class="text-2xl font-bold text-green-700">0</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-green-100 text-center">
+                            <span class="block text-xs text-slate-500 uppercase">Effort Score</span>
+                            <span id="effort-label" class="text-2xl font-bold text-green-700">Low</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-green-100 text-center">
+                            <span class="block text-xs text-slate-500 uppercase">Keystrokes</span>
+                            <span id="final-keys" class="text-2xl font-bold text-green-700">0</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-green-100">
+                        <h4 class="font-bold text-slate-800 mb-2">Critique & Analysis</h4>
+                        <p id="analysis-text" class="text-slate-600 text-sm leading-relaxed mb-4">
+                            Your edits will be analyzed here based on O'Brien's criteria...
+                        </p>
+                        <div id="diff-view" class="p-4 bg-slate-50 rounded-lg text-sm font-mono whitespace-pre-wrap"></div>
+                    </div>
+                    
+                    <button onclick="location.reload()" class="mt-6 w-full py-3 bg-slate-800 text-white rounded-xl font-semibold hover:bg-slate-900">Try Next Segment</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    </div>
+
+    <script>
+        function startWorkshop() {
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('workshop-interface').classList.remove('hidden');
+        }
+
+        const rawMT = "The program failed in updating because of not availability of the server. Please try again later or contact support if the problem stays.";
+        let mode = 'light';
+        let startTime = null;
+        let keystrokes = 0;
+        let timerInterval = null;
+        let timerStarted = false;
+
+        function startTimer() {
+            if (timerInterval) return;
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const secs = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // Use 'input' to reliably catch pasting, deleting, and typing
+        document.getElementById('editor').addEventListener('input', () => {
+            if (!timerStarted) {
+                startTimer();
+                timerStarted = true;
+            }
+        });
+
+        // Separate keystroke tracking from the timer
+        document.getElementById('editor').addEventListener('keydown', (e) => {
+            const isModifier = ['Shift', 'Control', 'Alt', 'Meta', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
+            if (!isModifier) {
+                keystrokes++;
+                document.getElementById('k-count').innerText = keystrokes;
+            }
+        });
+
+        function switchMode(newMode) {
+            mode = newMode;
+            const isLight = mode === 'light';
+            document.getElementById('btn-light').className = isLight ? 
+                "px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all" : 
+                "px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 transition-all";
+            document.getElementById('btn-full').className = !isLight ? 
+                "px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all" : 
+                "px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 transition-all";
+            
+            const guide = document.getElementById('pe-guidelines');
+            if(isLight) {
+                guide.innerHTML = `
+                    <h2 class="text-lg font-semibold mb-3 text-indigo-900">Current Task: Light PE</h2>
+                    <p class="text-sm text-indigo-800 mb-4 italic">"Fix only critical inaccuracies. Ignore awkward English phrasing like 'failed in updating' if the meaning is clear."</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2 text-xs text-indigo-700"><div class="w-2 h-2 rounded-full bg-indigo-500"></div>Focus on Accuracy</div>
+                        <div class="flex items-center gap-2 text-xs text-indigo-700"><div class="w-2 h-2 rounded-full bg-indigo-500"></div>Accept clunky phrasing</div>
+                    </div>`;
+            } else {
+                guide.innerHTML = `
+                    <h2 class="text-lg font-semibold mb-3 text-indigo-900">Current Task: Full PE</h2>
+                    <p class="text-sm text-indigo-800 mb-4 italic">"Achieve professional English quality. Fix 'failed in updating' to 'failed to update' and 'problem stays' to 'problem persists'."</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2 text-xs text-indigo-700"><div class="w-2 h-2 rounded-full bg-indigo-500"></div>Fluent English Collocations</div>
+                        <div class="flex items-center gap-2 text-xs text-indigo-700"><div class="w-2 h-2 rounded-full bg-indigo-500"></div>Professional Tone</div>
+                    </div>`;
+            }
+        }
+
+        function resetEditor() {
+            const editor = document.getElementById('editor');
+            editor.value = rawMT;
+            editor.readOnly = false;
+            keystrokes = 0;
+            document.getElementById('k-count').innerText = "0";
+            
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerStarted = false;
+            startTime = null;
+            document.getElementById('timer').innerText = "00:00";
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        function getEditDistance(a, b) {
+            if(a.length == 0) return b.length; 
+            if(b.length == 0) return a.length;
+            var matrix = [];
+            for(var i = 0; i <= b.length; i++){ matrix[i] = [i]; }
+            for(var j = 0; j <= a.length; j++){ matrix[0][j] = j; }
+            for(i = 1; i <= b.length; i++){
+                for(j = 1; j <= a.length; j++){
+                    if(b.charAt(i-1) == a.charAt(j-1)){ matrix[i][j] = matrix[i-1][j-1]; } 
+                    else { matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1)); }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function submitPE() {
+            const editor = document.getElementById('editor');
+            editor.readOnly = true; // Lock editor to prevent timing bugs after submission
+            clearInterval(timerInterval);
+
+            // Handle edge case if user submits without ever typing
+            if (!startTime) startTime = Date.now();
+            
+            const userText = editor.value;
+            const distance = getEditDistance(rawMT, userText);
+            const timeSeconds = Math.floor((Date.now() - startTime) / 1000);
+            
+            document.getElementById('results').classList.remove('hidden');
+            document.getElementById('final-time').innerText = timeSeconds + "s";
+            document.getElementById('final-ed').innerText = distance;
+            document.getElementById('final-keys').innerText = keystrokes;
+
+            let effort = "Medium";
+            if (distance < 15) effort = "Low";
+            if (distance > 45) effort = "High";
+            document.getElementById('effort-label').innerText = effort;
+
+            // Improved Word Counting using Regex to handle spaces/newlines properly
+            const oldWords = rawMT.trim().split(/\s+/);
+            const newWords = userText.trim().split(/\s+/);
+            
+            const added = newWords.filter(w => !oldWords.includes(w)).length;
+            const removed = oldWords.filter(w => !newWords.includes(w)).length;
+            const totalChanges = added + removed;
+
+            // Semantic Analysis Variables
+            const t = userText.toLowerCase();
+            const hasProgram = t.match(/program|software|app|system/);
+            const hasFail = t.match(/fail|could not|unable|cannot|can't|didn't|did not|error|unsuccessful/);
+            const hasUpdate = t.match(/update|updating/);
+            const hasServer = t.match(/server/);
+            const hasSupport = t.match(/support|contact|help|assist/);
+
+            let meaningDistorted = !(hasProgram && hasFail && hasUpdate && hasServer && hasSupport);
+
+            let analysis = `In <strong>${mode.toUpperCase()} PE</strong> mode, your technical effort was ${distance} units, consisting of ${totalChanges} word-level changes (${added} added, ${removed} removed). <br/><br/>`;
+
+            // Semantic check output
+            if (meaningDistorted) {
+                analysis += `<span class="text-red-700 font-bold block mb-2">Critique (Semantic Distortion):</span> Your translation drops or fundamentally alters core concepts from the Arabic source (e.g., <em>فشل البرنامج</em>, <em>التحديث</em>, <em>الخادم</em>, or <em>الدعم</em>). Semantic adequacy is the non-negotiable baseline for PE. Distorting meaning invalidates the edit, regardless of fluency. <br/><br/>`;
+            } else {
+                analysis += `<span class="text-green-700 font-bold block mb-2">Semantic Adequacy:</span> The core semantic meaning of the Arabic original has been successfully preserved. <br/><br/>`;
+            }
+
+            // Strategy evaluation output
+            if (mode === 'light') {
+                if (distance > 30) {
+                    analysis += "<strong>Strategy Critique:</strong> Your level of intervention exceeds Light PE requirements. You engaged in stylistic editing, which O'Brien notes directly reduces the productivity gains of MT. Focus strictly on semantic accuracy rather than flow.";
+                } else if (!meaningDistorted) {
+                    analysis += "<strong>Strategy Evaluation:</strong> Your level of intervention correctly aligns with Light PE requirements. You preserved the meaning without wasting technical effort on unnecessary stylistic polishing.";
+                }
+            } else if (mode === 'full') {
+                if (userText.toLowerCase().includes("persists") && (userText.toLowerCase().includes("failed to") || userText.toLowerCase().includes("could not"))) {
+                    analysis += "<strong>Strategy Evaluation:</strong> You successfully identified and neutralized the literal MT translation of the Arabic verb 'استمرت' (stays → persists) and corrected the unnatural prepositional phrase. Your intervention aligns effectively with Full PE standards.";
+                } else {
+                    analysis += "<strong>Strategy Critique:</strong> Your intervention falls short of Full PE standards. You missed critical opportunities to establish professional collocations (e.g., leaving 'failed in updating' or 'stays'), resulting in an output that still reads like raw MT.";
+                }
+            }
+
+            document.getElementById('analysis-text').innerHTML = analysis;
+
+            generateDiff(rawMT, userText);
+        }
+
+        function generateDiff(oldStr, newStr) {
+            const oldWords = oldStr.trim().split(/\s+/);
+            const newWords = newStr.trim().split(/\s+/);
+            let diffHtml = "";
+            newWords.forEach((word) => {
+                if (oldWords.includes(word)) {
+                    diffHtml += word + " ";
+                } else {
+                    diffHtml += `<span class="diff-added bg-green-100 px-1 rounded">${word}</span> `;
+                }
+            });
+            document.getElementById('diff-view').innerHTML = "<strong>Added/Modified Words:</strong> <br/><br/>" + diffHtml;
+        }
+    </script>
+</body>
+</html>
